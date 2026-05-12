@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Australia Mattress Import Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F8F7F4;--surface:#FFFFFF;--surface2:#F2F1EE;--border:#E5E3DF;
+  --text:#1A1917;--text2:#6B6860;--text3:#9E9C98;
+  --china:#C84B2F;--viet:#1B5E42;--mlay:#1A3A6B;--other:#B4B2A9;
+  --radius:10px;--radius-lg:14px;--shadow:0 1px 3px rgba(0,0,0,0.08);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* HEADER */
+.header{background:#1A3A6B;color:#fff;padding:24px 0}
+.header h1{font-size:21px;font-weight:600;letter-spacing:-0.3px}
+.header p{font-size:13px;opacity:0.7;margin-top:3px}
+.badge{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:500}
+
+/* FILTER BAR */
+.filterbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.filter-inner{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:'DM Sans',sans-serif;font-size:12px;padding:4px 11px;border-radius:20px;border:1.5px solid var(--border);background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;user-select:none}
+.chip:hover{border-color:#999;color:var(--text)}
+.chip.sel{background:#1A3A6B;color:#fff;border-color:#1A3A6B}
+.chip.sel-410{background:#6B4C1A;color:#fff;border-color:#6B4C1A}
+.chip.sel-421{background:#C84B2F;color:#fff;border-color:#C84B2F}
+.chip.sel-429{background:#1B5E42;color:#fff;border-color:#1B5E42}
+.chip.sel-yr{background:#2D6A9F;color:#fff;border-color:#2D6A9F}
+.select-field{font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+.filter-hint{font-size:11px;color:var(--text3);align-self:flex-end;padding-bottom:2px}
+
+/* SECTIONS */
+.section{padding:24px 0 0}
+.sec-label{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.kpi.hl{border-left:3px solid var(--china)}
+.kpi-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:600;color:var(--text);line-height:1;letter-spacing:-0.5px}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-chg{font-size:11px;font-weight:500;margin-top:3px}
+.red{color:var(--china)}.grn{color:var(--viet)}.blu{color:var(--mlay)}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--text2);margin-bottom:14px}
+.chart-wrap{position:relative;width:100%}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:780px){.g2,.g3{grid-template-columns:1fr}}
+
+/* LEGEND */
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.leg-i{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.sw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* HS BREAKDOWN ROW */
+.hs-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.hs-row:last-child{border-bottom:none}
+.hs-metric{font-size:12px;color:var(--text2)}
+.hs-val{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+
+/* INJURY */
+.inj-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.inj-grid>.inj-card:last-child:nth-child(3){grid-column:1/-1}
+@media(max-width:680px){.inj-grid{grid-template-columns:1fr}}
+.inj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)}
+.inj-yr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:10px}
+.pill{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;margin-left:6px}
+.pill-bad{background:#FEE9E4;color:#C84B2F}
+.pill-neu{background:#F2F1EE;color:#6B6860}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--surface2)}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+td.lbl{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500}
+td.hs-410{color:#6B4C1A;font-weight:600}
+td.hs-421{color:var(--china);font-weight:600}
+td.hs-429{color:var(--viet);font-weight:600}
+td.red{color:var(--china);font-weight:600}
+
+/* MAP */
+#map-wrap{position:relative;width:100%;background:var(--surface2);border-radius:var(--radius);overflow:hidden}
+#map-wrap svg{display:block;width:100%;height:auto}
+.map-tt{position:absolute;background:#1A1917;color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;pointer-events:none;opacity:0;transition:opacity 0.1s;white-space:nowrap;z-index:10}
+.map-leg{position:absolute;bottom:10px;left:10px;background:rgba(255,255,255,0.93);border:1px solid var(--border);border-radius:8px;padding:9px 12px}
+.map-leg p{font-size:10px;color:var(--text2);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em}
+.ml-i{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);margin-bottom:2px}
+.ml-sw{width:11px;height:7px;border-radius:2px}
+
+/* FOOTER */
+.footer{background:var(--surface);border-top:1px solid var(--border);padding:18px 0;margin-top:20px}
+.footer p{font-size:10px;color:var(--text3);line-height:1.8}
+
+/* NO DATA */
+.no-data{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;font-style:italic}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1>Australia Mattress Import Analysis</h1>
+        <p>HS 940410 · 940421 · 940429 &nbsp;|&nbsp; 2020–2025 &nbsp;|&nbsp; Source: UN Comtrade / ABS / ABF</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge">UN Comtrade</span>
+        <span class="badge">ABS / ABF</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filterbar">
+  <div class="container">
+    <div class="filter-inner">
+      <div class="fg">
+        <span class="fg-label">HS Code (multi-select)</span>
+        <div class="chip-row" id="hsChips">
+          <button class="chip sel-410" data-hs="940410" onclick="toggleHS('940410',this)">940410 Supports</button>
+          <button class="chip sel-421" data-hs="940421" onclick="toggleHS('940421',this)">940421 Foam</button>
+          <button class="chip sel-429" data-hs="940429" onclick="toggleHS('940429',this)">940429 Other</button>
+        </div>
+      </div>
+      <div class="fg">
+        <span class="fg-label">Year range</span>
+        <div class="chip-row" style="gap:8px;align-items:center">
+          <select id="yearFrom" class="select-field" onchange="setYearRange()">
+            <option value="2020" selected>2020</option>
+            <option value="2021">2021</option>
+            <option value="2022">2022</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+          </select>
+          <span style="font-size:13px;color:var(--text3);font-weight:500">to</span>
+          <select id="yearTo" class="select-field" onchange="setYearRange()">
+            <option value="2020">2020</option>
+            <option value="2021">2021</option>
+            <option value="2022">2022</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <span class="fg-label">Metric</span>
+        <div class="chip-row">
+          <button class="chip sel" id="mUnits" onclick="setMetric('units',this)">Units</button>
+          <button class="chip" id="mValue" onclick="setMetric('value',this)">CIF USD</button>
+        </div>
+      </div>
+      <span class="filter-hint">All filters update every chart and table below</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- KPI CARDS -->
+<div class="section">
+  <div class="sec-label">Snapshot — filtered selection</div>
+  <div class="kpi-grid">
+    <div class="kpi hl">
+      <div class="kpi-lbl">Total units</div>
+      <div class="kpi-val" id="k-units">—</div>
+      <div class="kpi-sub" id="k-units-sub">selected codes + years</div>
+      <div class="kpi-chg" id="k-units-chg"></div>
+    </div>
+    <div class="kpi hl">
+      <div class="kpi-lbl">China unit share</div>
+      <div class="kpi-val red" id="k-share">—</div>
+      <div class="kpi-sub">of selected world total</div>
+      <div class="kpi-chg" id="k-share-chg"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">Total CIF value</div>
+      <div class="kpi-val" id="k-cif">—</div>
+      <div class="kpi-sub">USD</div>
+      <div class="kpi-chg" id="k-cif-chg"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">Avg price / unit</div>
+      <div class="kpi-val" id="k-avg">—</div>
+      <div class="kpi-sub">USD, selected codes</div>
+      <div class="kpi-chg" id="k-avg-chg"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">China CIF value</div>
+      <div class="kpi-val" id="k-china-cif">—</div>
+      <div class="kpi-sub" id="k-china-pct">% of total</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">Vietnam + Malaysia</div>
+      <div class="kpi-val" id="k-vm">—</div>
+      <div class="kpi-sub" id="k-vm-pct">% of world total</div>
+    </div>
+  </div>
+</div>
+
+<!-- WORLD MAP -->
+<div class="section">
+  <div class="sec-label">Import flow — 2024</div>
+  <div class="card">
+    <div class="card-title">Global origins → Australia</div>
+    <div class="card-sub">Bubble size = relative import share. Flows show 2024 data.</div>
+    <div id="map-wrap">
+      <div class="map-tt" id="mapTT"></div>
+      <svg id="worldMap" viewBox="0 0 960 500" aria-label="World map showing mattress import flows to Australia"></svg>
+      <div class="map-leg">
+        <p>Import origins 2024</p>
+        <div class="ml-i"><div class="ml-sw" style="background:#C84B2F"></div>China — 92.4% of units</div>
+        <div class="ml-i"><div class="ml-sw" style="background:#1B5E42"></div>Viet Nam — 1.2%</div>
+        <div class="ml-i"><div class="ml-sw" style="background:#2D6A9F"></div>Malaysia — 0.1%</div>
+        <div class="ml-i"><div class="ml-sw" style="background:#1A3A6B"></div>Australia (destination)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BAR + SHARE -->
+<div class="section">
+  <div class="sec-label">Volume &amp; market share</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Import volume by HS code &amp; country</div>
+      <div class="card-sub" id="bar-sub">Stacked by origin — filtered years</div>
+      <div class="leg">
+        <span class="leg-i"><span class="sw" style="background:#C84B2F"></span>China</span>
+        <span class="leg-i"><span class="sw" style="background:#1B5E42"></span>Viet Nam</span>
+        <span class="leg-i"><span class="sw" style="background:#1A3A6B"></span>Malaysia</span>
+        <span class="leg-i"><span class="sw" style="background:#B4B2A9"></span>Other</span>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">China market share — % of world units</div>
+      <div class="card-sub">Each selected HS code shown separately</div>
+      <div class="leg">
+        <span class="leg-i"><span class="sw" style="background:#6B4C1A;border-radius:50%"></span>940410</span>
+        <span class="leg-i"><span class="sw" style="background:#C84B2F;border-radius:50%"></span>940421</span>
+        <span class="leg-i"><span class="sw" style="background:#1B5E42;border-radius:50%"></span>940429</span>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="shareChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICE + MONTHLY -->
+<div class="section">
+  <div class="sec-label">Price trend &amp; seasonality</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Average CIF price per unit — USD</div>
+      <div class="card-sub">CIF value divided by reported item units</div>
+      <div class="leg">
+        <span class="leg-i"><span class="sw" style="background:#6B4C1A;border-radius:50%"></span>940410 supports</span>
+        <span class="leg-i"><span class="sw" style="background:#C84B2F;border-radius:50%"></span>940421 foam</span>
+        <span class="leg-i"><span class="sw" style="background:#1B5E42;border-radius:50%"></span>940429 other</span>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="priceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">2024 monthly import volume</div>
+      <div class="card-sub">940421 + 940429 · world vs China</div>
+      <div class="leg">
+        <span class="leg-i"><span class="sw" style="background:#1A3A6B"></span>World</span>
+        <span class="leg-i"><span class="sw" style="background:#C84B2F"></span>China</span>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="monthlyChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- HS CODE BREAKDOWN -->
+<div class="section">
+  <div class="sec-label" id="hs-breakdown-label">HS code breakdown — latest selected year</div>
+  <div class="g3">
+    <div class="card" id="card-410">
+      <div class="card-title" style="color:#6B4C1A">940410 — Mattress supports</div>
+      <div class="card-sub">Bases, slats, box springs</div>
+      <div class="hs-row"><span class="hs-metric">World units</span><span class="hs-val" id="card-410-wu">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China units</span><span class="hs-val" id="card-410-cu" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China share</span><span class="hs-val" id="card-410-share" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">CIF value</span><span class="hs-val" id="card-410-cif">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Avg price/unit</span><span class="hs-val" id="card-410-avg">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Unit basis</span><span class="hs-val">item units</span></div>
+    </div>
+    <div class="card" id="card-421">
+      <div class="card-title" style="color:#C84B2F">940421 — Foam/rubber mattresses</div>
+      <div class="card-sub">Cellular rubber or plastic</div>
+      <div class="hs-row"><span class="hs-metric">World units</span><span class="hs-val" id="card-421-wu">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China units</span><span class="hs-val" id="card-421-cu" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China share</span><span class="hs-val" id="card-421-share" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">CIF value</span><span class="hs-val" id="card-421-cif">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Avg price/unit</span><span class="hs-val" id="card-421-avg">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Unit basis</span><span class="hs-val">item units</span></div>
+    </div>
+    <div class="card" id="card-429">
+      <div class="card-title" style="color:#1B5E42">940429 — Other mattresses</div>
+      <div class="card-sub">Spring, latex, water, air</div>
+      <div class="hs-row"><span class="hs-metric">World units</span><span class="hs-val" id="card-429-wu">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China units</span><span class="hs-val" id="card-429-cu" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">China share</span><span class="hs-val" id="card-429-share" style="color:#C84B2F">—</span></div>
+      <div class="hs-row"><span class="hs-metric">CIF value</span><span class="hs-val" id="card-429-cif">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Avg price/unit</span><span class="hs-val" id="card-429-avg">—</span></div>
+      <div class="hs-row"><span class="hs-metric">Unit basis</span><span class="hs-val">item units</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- DONUT -->
+<div class="section">
+  <div class="sec-label">2024 value split</div>
+  <div class="g2">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center">
+      <div class="card-title">CIF value by HS code</div>
+      <div class="card-sub">Total = $247.5M USD (all 3 codes)</div>
+      <div class="chart-wrap" style="height:220px;max-width:220px">
+        <canvas id="donutHS"></canvas>
+      </div>
+      <div class="leg" style="justify-content:center;margin-top:12px">
+        <span class="leg-i"><span class="sw" style="background:#6B4C1A"></span>940410 $29.3M</span>
+        <span class="leg-i"><span class="sw" style="background:#C84B2F"></span>940421 $66.2M</span>
+        <span class="leg-i"><span class="sw" style="background:#1B5E42"></span>940429 $152.0M</span>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;align-items:center">
+      <div class="card-title">Units by origin — mattresses only</div>
+      <div class="card-sub">940421 + 940429 · 2024 world total</div>
+      <div class="chart-wrap" style="height:220px;max-width:220px">
+        <canvas id="donutOrigin"></canvas>
+      </div>
+      <div class="leg" style="justify-content:center;margin-top:12px">
+        <span class="leg-i"><span class="sw" style="background:#C84B2F"></span>China 92.4%</span>
+        <span class="leg-i"><span class="sw" style="background:#1B5E42"></span>Vietnam 1.2%</span>
+        <span class="leg-i"><span class="sw" style="background:#1A3A6B"></span>Malaysia 0.1%</span>
+        <span class="leg-i"><span class="sw" style="background:#B4B2A9"></span>Other 6.3%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARISON SECTION -->
+<div class="section">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="sec-label" id="cmp-label" style="margin-bottom:0">Year comparison — 2020 vs 2025</div>
+    <div class="fg">
+      <span class="fg-label">Comparison years</span>
+      <div class="chip-row" style="gap:8px;align-items:center">
+        <select id="cmpA" class="select-field" onchange="buildComparison()">
+          <option value="2020" selected>2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+        </select>
+        <span style="font-size:13px;color:var(--text3);font-weight:500">vs</span>
+        <select id="cmpB" class="select-field" onchange="buildComparison()">
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="inj-grid" id="cmpGrid">
+    <!-- filled by buildComparison() -->
+  </div>
+</div>
+
+<!-- DATA TABLE -->
+<div class="section" style="padding-bottom:28px">
+  <div class="sec-label">Full data table</div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div class="card-title">All records — filtered by selections above</div>
+        <div class="card-sub">Each HS code shown as a separate row per year</div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>HS Code</th>
+            <th>Description</th>
+            <th>World Units</th>
+            <th>China Units</th>
+            <th>Vietnam</th>
+            <th>Malaysia</th>
+            <th>China % Units</th>
+            <th>World CIF (USD)</th>
+            <th>China CIF (USD)</th>
+            <th>China % Value</th>
+            <th>Avg USD/unit</th>
+            <th>YoY Units</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <p style="font-size:10px;color:var(--text3);margin-top:8px">Source: UN Comtrade, as reported by Australia (ABF/ABS). Partners shown: China (mainland), Viet Nam, Malaysia, Hong Kong SAR. World totals are Comtrade world totals.</p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  <div class="container">
+    <p>Data source: UN Comtrade Database, as reported by Australia (Australian Border Force / ABS) &nbsp;·&nbsp; HS codes 940410, 940421, 940429 &nbsp;·&nbsp; Annual data 2020–2025 &nbsp;·&nbsp; CIF values in USD &nbsp;·&nbsp; Australian Furniture Association (AFA) / FurnitureDNA &nbsp;·&nbsp; May 2026</p>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA — one row per HS per year
+// ============================================================
+const ROWS = [
+  // year, hs, wU, cU, vU, mU, wCIF, cCIF, avg
+  [2020,'940410',850162.02,733644.00,1402.00,0.00,30875533.079,25501686.652,36.317234],
+  [2020,'940421',736918.90,478475.00,9200.90,3802.00,62109457.164,31280803.296,84.282622],
+  [2020,'940429',1949856.80,1877746.80,13702.00,4616.00,148677203.769,139321121.843,76.250319],
+  [2021,'940410',647025.00,518144.00,61.00,2110.00,33049634.473,25971473.111,51.079378],
+  [2021,'940421',834005.26,681173.00,2961.00,4302.00,78833378.404,49089610.222,94.523838],
+  [2021,'940429',1676708.00,1552080.00,10914.00,13065.00,151796324.637,135554963.282,90.532355],
+  [2022,'940410',705106.00,596474.00,0.00,720.00,37930501.421,31323109.707,53.794041],
+  [2022,'940421',1004497.00,732232.00,2895.00,3212.00,96039637.718,60094890.017,95.609681],
+  [2022,'940429',1948720.50,1842708.50,11833.00,2509.00,164115958.059,151571202.086,84.217289],
+  [2023,'940410',651311.00,584654.00,315.00,115.00,29588909.056,25140364.805,45.429770],
+  [2023,'940421',661695.78,517002.78,6814.00,1777.00,52741853.407,32063524.088,79.707103],
+  [2023,'940429',1829339.32,1733819.32,8328.00,1094.00,133131820.005,122085778.231,72.775903],
+  [2024,'940410',651213.00,581452.00,0.00,0.00,29303647.158,24942503.560,44.998560],
+  [2024,'940421',715070.62,645303.00,3273.00,1884.00,66157315.448,42869478.808,92.518576],
+  [2024,'940429',1829255.80,1705079.80,26662.00,1659.00,151973367.879,138874343.940,83.079342],
+  [2025,'940410',583928.10,513501.10,0.00,0.00,24532706.220,19821239.314,42.013231],
+  [2025,'940421',777301.36,681410.60,6527.00,1340.00,72879581.705,45414948.744,93.759751],
+  [2025,'940429',1851066.01,1702335.37,27586.00,273.00,145926898.411,134162988.662,78.833979],
+];
+
+const HS_DESC = {
+  '940410':'Mattress supports',
+  '940421':'Foam/rubber mattresses',
+  '940429':'Other mattresses'
+};
+const HS_CLS = {'940410':'hs-410','940421':'hs-421','940429':'hs-429'};
+const HS_COL = {'940410':'#6B4C1A','940421':'#C84B2F','940429':'#1B5E42'};
+
+// ============================================================
+// STATE
+// ============================================================
+let selHS = new Set(['940410','940421','940429']);
+let selYr = new Set([2020,2021,2022,2023,2024,2025]);
+let metric = 'units'; // 'units' | 'value'
+let charts = {};
+
+// ============================================================
+// FILTER TOGGLES
+// ============================================================
+function toggleHS(hs, btn){
+  if(selHS.has(hs)){
+    if(selHS.size===1) return; // keep at least one
+    selHS.delete(hs);
+    btn.classList.remove('sel-410','sel-421','sel-429');
+  } else {
+    selHS.add(hs);
+    btn.classList.add(hs==='940410'?'sel-410':hs==='940421'?'sel-421':'sel-429');
+  }
+  updateAll();
+}
+
+function setYearRange(){
+  const fromEl = document.getElementById('yearFrom');
+  const toEl = document.getElementById('yearTo');
+  let from = parseInt(fromEl.value);
+  let to = parseInt(toEl.value);
+  if(from > to){
+    [from, to] = [to, from];
+    fromEl.value = String(from);
+    toEl.value = String(to);
+  }
+  selYr = new Set([2020,2021,2022,2023,2024,2025].filter(y => y >= from && y <= to));
+  updateAll();
+}
+
+function setMetric(m, btn){
+  metric = m;
+  document.getElementById('mUnits').classList.toggle('sel', m==='units');
+  document.getElementById('mValue').classList.toggle('sel', m==='value');
+  updateAll();
+}
+
+// ============================================================
+// FILTERED DATA HELPERS
+// ============================================================
+function filteredRows(){
+  return ROWS.filter(r => selHS.has(r[1]) && selYr.has(r[0]));
+}
+
+function filteredYears(){
+  return [2020,2021,2022,2023,2024,2025].filter(y => selYr.has(y));
+}
+
+function rowsForHSYear(hs, yr){
+  return ROWS.find(r => r[1]===hs && r[0]===yr);
+}
+
+function aggForYear(yr){
+  // aggregate across selected HS codes for a given year
+  let wU=0,cU=0,vU=0,mU=0,wC=0,cC=0;
+  selHS.forEach(hs=>{
+    const r = rowsForHSYear(hs,yr);
+    if(r){ wU+=r[2];cU+=r[3];vU+=r[4];mU+=r[5];wC+=r[6];cC+=r[7]; }
+  });
+  return {wU,cU,vU,mU,oU:Math.max(0,wU-cU-vU-mU),wC,cC,avg:wU>0?wC/wU:0};
+}
+
+// ============================================================
+// KPI UPDATE
+// ============================================================
+function updateKPIs(){
+  const years = filteredYears().sort();
+  if(!years.length){ return; }
+
+  // Sum across all selected years and HS codes
+  let totWU=0,totCU=0,totVU=0,totMU=0,totWC=0,totCC=0;
+  years.forEach(yr=>{
+    const a = aggForYear(yr);
+    totWU+=a.wU; totCU+=a.cU; totVU+=a.vU; totMU+=a.mU; totWC+=a.wC; totCC+=a.cC;
+  });
+
+  // For latest year vs previous year change
+  const latYr = years[years.length-1];
+  const prevYr = years.length>1 ? years[years.length-2] : null;
+  const latA = aggForYear(latYr);
+  const prevA = prevYr ? aggForYear(prevYr) : null;
+
+  const fmtU = n => n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n).toLocaleString();
+  const fmtC = n => '$'+(n/1e6).toFixed(1)+'M';
+  const chg = (a,b) => b>0?((a-b)/b*100).toFixed(1)+'%':'—';
+
+  document.getElementById('k-units').textContent = fmtU(totWU);
+  document.getElementById('k-units-sub').textContent = selHS.size+' code(s) · '+years.length+' year(s)';
+  document.getElementById('k-units-chg').textContent = prevA ? (latA.wU>=prevA.wU?'+':'')+chg(latA.wU,prevA.wU)+' vs '+prevYr:'';
+  document.getElementById('k-units-chg').className = 'kpi-chg '+(prevA&&latA.wU>prevA.wU?'red':'grn');
+
+  const shareVal = totWU>0?(totCU/totWU*100).toFixed(1)+'%':'—';
+  const shareBase = aggForYear(years[0]);
+  const shareBaseVal = shareBase.wU>0?(shareBase.cU/shareBase.wU*100).toFixed(1):'—';
+  document.getElementById('k-share').textContent = shareVal;
+  document.getElementById('k-share-chg').textContent = years.length>1?'from '+shareBaseVal+'% in '+years[0]:'';
+
+  document.getElementById('k-cif').textContent = fmtC(totWC);
+  document.getElementById('k-cif-chg').textContent = prevA?( latA.wC>=prevA.wC?'+':'')+chg(latA.wC,prevA.wC)+' vs '+prevYr:'';
+
+  const avgAll = totWU>0?(totWC/totWU).toFixed(2):'—';
+  document.getElementById('k-avg').textContent = avgAll!=='—'?'$'+avgAll:'—';
+  document.getElementById('k-avg-chg').textContent = '';
+
+  document.getElementById('k-china-cif').textContent = fmtC(totCC);
+  document.getElementById('k-china-pct').textContent = totWC>0?(totCC/totWC*100).toFixed(1)+'% of total value':'';
+
+  const vmU = totVU+totMU;
+  document.getElementById('k-vm').textContent = fmtU(vmU);
+  document.getElementById('k-vm-pct').textContent = totWU>0?(vmU/totWU*100).toFixed(1)+'% of world total':'';
+}
+
+// ============================================================
+// BAR CHART
+// ============================================================
+function buildBarChart(){
+  const ctx = document.getElementById('barChart').getContext('2d');
+  if(charts.bar) charts.bar.destroy();
+  const years = filteredYears().sort();
+  if(!years.length){ return; }
+
+  // One group per year, stacked by country, each HS gets its own cluster OR we merge
+  // Strategy: label = "YEAR HS" so each combination is a bar group
+  const labels = [];
+  const dChina=[], dViet=[], dMaly=[], dOther=[];
+
+  years.forEach(yr=>{
+    selHS.forEach(hs=>{
+      const r = rowsForHSYear(hs,yr);
+      labels.push(yr+' '+hs.slice(-3));
+      const wU=r?r[2]:0, cU=r?r[3]:0, vU=r?r[4]:0, mU=r?r[5]:0;
+      const useVal = metric==='value';
+      const wC=r?r[6]:0, cC=r?r[7]:0;
+      if(useVal){
+        dChina.push(cC); dViet.push(0); dMaly.push(0); dOther.push(wC-cC);
+      } else {
+        dChina.push(cU); dViet.push(vU); dMaly.push(mU); dOther.push(Math.max(0,wU-cU-vU-mU));
+      }
+    });
+  });
+
+  const yFmt = metric==='value' ? v=>'$'+(v/1e6).toFixed(0)+'M' : v=>(v/1e6).toFixed(1)+'M';
+  const gc='rgba(0,0,0,0.05)', tc='#9E9C98';
+
+  charts.bar = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'China',   data:dChina, backgroundColor:'#C84B2F'},
+        {label:'Viet Nam',data:dViet,  backgroundColor:'#1B5E42'},
+        {label:'Malaysia',data:dMaly,  backgroundColor:'#1A3A6B'},
+        {label:'Other',   data:dOther, backgroundColor:'#B4B2A9'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+c.formattedValue}}},
+      scales:{
+        x:{stacked:true, grid:{color:gc}, ticks:{color:tc,font:{size:10,family:'DM Sans'},maxRotation:45,minRotation:30}},
+        y:{stacked:true, grid:{color:gc}, ticks:{color:tc,font:{size:10,family:'DM Sans'},callback:yFmt}}
+      }
+    }
+  });
+
+  document.getElementById('bar-sub').textContent = (metric==='value'?'CIF USD':'Units')+' · '+selHS.size+' HS code(s) · '+years.join(', ');
+}
+
+// ============================================================
+// SHARE CHART
+// ============================================================
+function buildShareChart(){
+  const ctx = document.getElementById('shareChart').getContext('2d');
+  if(charts.share) charts.share.destroy();
+  const years = filteredYears().sort();
+  if(!years.length){ return; }
+  const gc='rgba(0,0,0,0.05)', tc='#9E9C98';
+
+  const datasets = [];
+  const hsArr = ['940410','940421','940429'];
+  const colors = {'940410':'#6B4C1A','940421':'#C84B2F','940429':'#1B5E42'};
+  const dashes = {'940410':[6,3],'940421':[],'940429':[3,3]};
+
+  hsArr.forEach(hs=>{
+    if(!selHS.has(hs)) return;
+    const data = years.map(yr=>{
+      const r = rowsForHSYear(hs,yr);
+      return r && r[2]>0 ? parseFloat((r[3]/r[2]*100).toFixed(1)) : null;
+    });
+    datasets.push({
+      label:hs,data,
+      borderColor:colors[hs],backgroundColor:'transparent',
+      pointRadius:5,tension:0.3,
+      borderDash:dashes[hs],
+      spanGaps:true
+    });
+  });
+
+  charts.share = new Chart(ctx,{
+    type:'line',
+    data:{labels:years.map(String),datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'DM Sans'}}},
+        y:{grid:{color:gc},min:50,max:100,ticks:{color:tc,font:{size:11,family:'DM Sans'},callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// PRICE CHART
+// ============================================================
+function buildPriceChart(){
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if(charts.price) charts.price.destroy();
+  const years = filteredYears().sort();
+  if(!years.length){ return; }
+  const gc='rgba(0,0,0,0.05)', tc='#9E9C98';
+  const colors = {'940410':'#6B4C1A','940421':'#C84B2F','940429':'#1B5E42'};
+  const dashes = {'940410':[6,3],'940421':[],'940429':[3,3]};
+
+  const datasets = ['940410','940421','940429'].filter(h=>selHS.has(h)).map(hs=>({
+    label:hs,
+    data:years.map(yr=>{ const r=rowsForHSYear(hs,yr); return r?r[8]:null; }),
+    borderColor:colors[hs],backgroundColor:'transparent',
+    pointRadius:5,tension:0.3,borderDash:dashes[hs],spanGaps:true
+  }));
+
+  charts.price = new Chart(ctx,{
+    type:'line',
+    data:{labels:years.map(String),datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'DM Sans'}}},
+        y:{grid:{color:gc},min:0,ticks:{color:tc,font:{size:11,family:'DM Sans'},callback:v=>'$'+v}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// MONTHLY CHART (static 2024)
+// ============================================================
+function buildMonthlyChart(){
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  if(charts.monthly) charts.monthly.destroy();
+  const mW=[256247,310612,168483,192321,233963,173546,189718,169208,181570,218447,215743,234469];
+  const mC=[244937,298162,149767,173426,220094,157895,174795,148847,165901,200109,197422,219028];
+  const gc='rgba(0,0,0,0.05)',tc='#9E9C98';
+  charts.monthly = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets:[
+        {label:'World',data:mW,backgroundColor:'#1A3A6B'},
+        {label:'China',data:mC,backgroundColor:'#C84B2F'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:10,family:'DM Sans'},autoSkip:false}},
+        y:{grid:{color:gc},ticks:{color:tc,font:{size:10,family:'DM Sans'},callback:v=>(v/1000).toFixed(0)+'K'}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// DONUT CHARTS (static)
+// ============================================================
+function buildDonuts(){
+  const ctx1=document.getElementById('donutHS').getContext('2d');
+  if(charts.donutHS) charts.donutHS.destroy();
+  charts.donutHS=new Chart(ctx1,{
+    type:'doughnut',
+    data:{
+      labels:['940410','940421','940429'],
+      datasets:[{data:[29303647,66157315,151973368],backgroundColor:['#6B4C1A','#C84B2F','#1B5E42'],borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': $'+(c.raw/1e6).toFixed(1)+'M'}}}}
+  });
+
+  const ctx2=document.getElementById('donutOrigin').getContext('2d');
+  if(charts.donutOrigin) charts.donutOrigin.destroy();
+  charts.donutOrigin=new Chart(ctx2,{
+    type:'doughnut',
+    data:{
+      labels:['China','Viet Nam','Malaysia','Other'],
+      datasets:[{data:[92.4,1.2,0.1,6.3],backgroundColor:['#C84B2F','#1B5E42','#1A3A6B','#B4B2A9'],borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+'%'}}}}
+  });
+}
+
+// ============================================================
+// DATA TABLE
+// ============================================================
+function buildTable(){
+  const years = filteredYears().sort();
+  const tbody = document.getElementById('tblBody');
+  tbody.innerHTML='';
+
+  // Track prev units per HS for YoY
+  const prevByHS = {};
+
+  years.forEach(yr=>{
+    ['940410','940421','940429'].forEach(hs=>{
+      if(!selHS.has(hs)) return;
+      const r = rowsForHSYear(hs,yr);
+      if(!r) return;
+      const [,, wU,cU,vU,mU,wC,cC,avg] = r;
+      const pctU = wU>0?(cU/wU*100).toFixed(1):'—';
+      const pctC = wC>0?(cC/wC*100).toFixed(1):'—';
+      const prev = prevByHS[hs];
+      const yoy = prev!=null&&prev>0?((wU-prev)/prev*100).toFixed(1)+'%':'—';
+      const yoyPos = yoy!=='—'&&parseFloat(yoy)>0;
+      tbody.innerHTML+=`<tr>
+        <td class="lbl">${yr}</td>
+        <td class="${HS_CLS[hs]}">${hs}</td>
+        <td class="lbl" style="font-size:11px">${HS_DESC[hs]}</td>
+        <td>${Math.round(wU).toLocaleString()}</td>
+        <td class="red">${Math.round(cU).toLocaleString()}</td>
+        <td>${Math.round(vU).toLocaleString()}</td>
+        <td>${Math.round(mU).toLocaleString()}</td>
+        <td class="red">${pctU}%</td>
+        <td>$${(wC/1e6).toFixed(1)}M</td>
+        <td>$${(cC/1e6).toFixed(1)}M</td>
+        <td>${pctC}%</td>
+        <td>$${avg.toFixed(2)}</td>
+        <td class="${yoyPos?'red':'grn'}">${yoy!=='—'?(yoyPos?'+':'')+yoy:'-'}</td>
+      </tr>`;
+      prevByHS[hs] = wU;
+    });
+  });
+}
+
+// ============================================================
+// HS CARD VISIBILITY
+// ============================================================
+function updateHSCards(){
+  const years = filteredYears().sort();
+  const yr = years[years.length - 1];
+  document.getElementById('hs-breakdown-label').textContent = 'HS code breakdown — '+yr;
+
+  ['940410','940421','940429'].forEach(hs=>{
+    const short = hs.slice(-3);
+    const card = document.getElementById('card-'+short);
+    card.style.opacity = selHS.has(hs)?'1':'0.3';
+    const r = rowsForHSYear(hs, yr);
+    if(!r) return;
+    const [,, wU,cU,,,wC,,avg] = r;
+    document.getElementById('card-'+short+'-wu').textContent = Math.round(wU).toLocaleString();
+    document.getElementById('card-'+short+'-cu').textContent = Math.round(cU).toLocaleString();
+    document.getElementById('card-'+short+'-share').textContent = wU>0?(cU/wU*100).toFixed(1)+'%':'—';
+    document.getElementById('card-'+short+'-cif').textContent = '$'+(wC/1e6).toFixed(1)+'M';
+    document.getElementById('card-'+short+'-avg').textContent = '$'+avg.toFixed(2);
+  });
+}
+
+// ============================================================
+// UPDATE ALL
+// ============================================================
+function updateAll(){
+  updateKPIs();
+  buildBarChart();
+  buildShareChart();
+  buildPriceChart();
+  buildTable();
+  updateHSCards();
+  buildComparison();
+}
+
+// ============================================================
+// WORLD MAP
+// ============================================================
+function initMap(){
+  const svg=d3.select('#worldMap');
+  const proj=d3.geoNaturalEarth1().scale(153).translate([480,250]);
+  const path=d3.geoPath().projection(proj);
+  const imp={
+    '156':{name:'China',share:92.4,color:'#C84B2F',units:2350383},
+    '704':{name:'Viet Nam',share:1.2,color:'#1B5E42',units:29935},
+    '458':{name:'Malaysia',share:0.1,color:'#2D6A9F',units:3543},
+  };
+  const aus=proj([133.7751,-25.2744]);
+  const origins={'156':proj([104.1954,35.8617]),'704':proj([108.2772,14.0583]),'458':proj([109.6975,4.2105])};
+  svg.append('defs').append('marker').attr('id','arr').attr('markerWidth',6).attr('markerHeight',6).attr('refX',3).attr('refY',3).attr('orient','auto').append('path').attr('d','M0,0 L0,6 L6,3 z').attr('fill','#C84B2F').attr('opacity',0.5);
+  d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world=>{
+    const countries=topojson.feature(world,world.objects.countries);
+    svg.selectAll('path.cp').data(countries.features).enter().append('path').attr('class','cp')
+      .attr('d',path)
+      .attr('fill',d=>d.id==36?'#1A3A6B':d.id==156?'#C84B2F':d.id==704?'#1B5E42':d.id==458?'#2D6A9F':d.id==344?'rgba(200,75,47,0.3)':'#E5E3DF')
+      .attr('stroke','#fff').attr('stroke-width',0.4)
+      .on('mousemove',function(ev,d){
+        const i=imp[String(d.id)];
+        if(i){ const t=document.getElementById('mapTT'); t.style.opacity='1'; t.style.left=(ev.offsetX+10)+'px'; t.style.top=(ev.offsetY-28)+'px'; t.textContent=i.name+' → '+i.units.toLocaleString()+' units ('+i.share+'%)'; }
+      })
+      .on('mouseleave',()=>{ document.getElementById('mapTT').style.opacity='0'; });
+    Object.entries(origins).forEach(([id,orig])=>{
+      const i=imp[id]; const r=Math.sqrt(i.share)*9;
+      const mx=(orig[0]+aus[0])/2, my=Math.min(orig[1],aus[1])-55;
+      svg.append('path').attr('d',`M${orig[0]},${orig[1]} Q${mx},${my} ${aus[0]},${aus[1]}`).attr('stroke',i.color).attr('stroke-width',Math.max(1,i.share/12)).attr('fill','none').attr('opacity',0.55).attr('stroke-dasharray','5,4').attr('marker-end','url(#arr)');
+      svg.append('circle').attr('cx',orig[0]).attr('cy',orig[1]).attr('r',r).attr('fill',i.color).attr('opacity',0.85);
+      if(i.share>0.5) svg.append('text').attr('x',orig[0]).attr('y',orig[1]-r-4).attr('text-anchor','middle').attr('font-size',9).attr('font-family','DM Sans,sans-serif').attr('fill','#6B6860').text(i.share+'%');
+    });
+    svg.append('text').attr('x',aus[0]+4).attr('y',aus[1]-10).attr('font-size',10).attr('font-family','DM Sans,sans-serif').attr('fill','#fff').attr('font-weight','600').text('Australia');
+  }).catch(()=>{
+    svg.append('text').attr('x',480).attr('y',250).attr('text-anchor','middle').attr('font-size',13).attr('fill','#9E9C98').attr('font-family','DM Sans,sans-serif').text('Map requires internet connection');
+  });
+}
+
+// ============================================================
+// COMPARISON PANEL
+// ============================================================
+function buildComparison(){
+  const yrA = parseInt(document.getElementById('cmpA').value);
+  const yrB = parseInt(document.getElementById('cmpB').value);
+  document.getElementById('cmp-label').textContent = 'Year comparison — '+yrA+' vs '+yrB;
+
+  const metrics = [
+    {label:'World mattress units',    fn:(r)=>r.wU,  fmt:(v)=>Math.round(v).toLocaleString(), diff:'units'},
+    {label:'China units',             fn:(r)=>r.cU,  fmt:(v)=>Math.round(v).toLocaleString(), diff:'units'},
+    {label:'China unit share',        fn:(r)=>r.wU>0?(r.cU/r.wU*100):0, fmt:(v)=>v.toFixed(1)+'%', diff:'pp'},
+    {label:'World CIF value (USD)',   fn:(r)=>r.wC,  fmt:(v)=>'$'+(v/1e6).toFixed(1)+'M', diff:'pct'},
+    {label:'China CIF value (USD)',   fn:(r)=>r.cC,  fmt:(v)=>'$'+(v/1e6).toFixed(1)+'M', diff:'pct'},
+    {label:'Avg price / unit (USD)',  fn:(r)=>r.wU>0?r.wC/r.wU:0, fmt:(v)=>'$'+v.toFixed(2), diff:'pct'},
+    {label:'Vietnam units',           fn:(r)=>r.vU,  fmt:(v)=>Math.round(v).toLocaleString(), diff:'units'},
+    {label:'Malaysia units',          fn:(r)=>r.mU,  fmt:(v)=>Math.round(v).toLocaleString(), diff:'units'},
+  ];
+
+  function getAgg(yr){
+    let wU=0,cU=0,vU=0,mU=0,wC=0,cC=0;
+    selHS.forEach(hs=>{
+      const r = rowsForHSYear(hs,yr);
+      if(r){ wU+=r[2];cU+=r[3];vU+=r[4];mU+=r[5];wC+=r[6];cC+=r[7]; }
+    });
+    return {wU,cU,vU,mU,wC,cC};
+  }
+
+  const aA = getAgg(yrA);
+  const aB = getAgg(yrB);
+  const same = yrA === yrB;
+
+  function pillHtml(valA, valB, diffType){
+    if(same) return '';
+    let chg, cls;
+    if(diffType==='pp'){
+      chg = (valB - valA);
+      cls = chg > 0 ? 'pill-bad' : 'pill-neu';
+      return '<span class="pill '+cls+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'pp</span>';
+    } else if(diffType==='pct'){
+      if(valA===0) return '';
+      chg = ((valB-valA)/valA*100);
+      cls = chg > 0 ? 'pill-bad' : 'pill-neu';
+      return '<span class="pill '+cls+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'%</span>';
+    } else {
+      if(valA===0) return '';
+      chg = ((valB-valA)/valA*100);
+      cls = chg > 0 ? 'pill-bad' : 'pill-neu';
+      return '<span class="pill '+cls+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'%</span>';
+    }
+  }
+
+  // Also build per-HS breakdown
+  const hsRows = ['940410','940421','940429'].filter(h=>selHS.has(h)).map(hs=>{
+    const rA = rowsForHSYear(hs,yrA)||[0,hs,0,0,0,0,0,0,0];
+    const rB = rowsForHSYear(hs,yrB)||[0,hs,0,0,0,0,0,0,0];
+    const shareA = rA[2]>0?(rA[3]/rA[2]*100):0;
+    const shareB = rB[2]>0?(rB[3]/rB[2]*100):0;
+    const unitChg = rA[2]>0?((rB[2]-rA[2])/rA[2]*100):0;
+    const priceChg = rA[8]>0?((rB[8]-rA[8])/rA[8]*100):0;
+    return '<tr style="border-top:1px solid var(--border)">'+
+      '<td class="lbl '+HS_CLS[hs]+'" style="font-size:12px">'+hs+'</td>'+
+      '<td>'+Math.round(rA[2]).toLocaleString()+'</td>'+
+      '<td>'+Math.round(rB[2]).toLocaleString()+'</td>'+
+      '<td class="'+(unitChg>0?'red':'grn')+'">'+(unitChg>=0?'+':'')+unitChg.toFixed(1)+'%</td>'+
+      '<td>'+shareA.toFixed(1)+'%</td>'+
+      '<td>'+shareB.toFixed(1)+'%</td>'+
+      '<td class="'+(shareB>shareA?'red':'grn')+'">'+(shareB>=shareA?'+':'')+((shareB-shareA).toFixed(1))+'pp</td>'+
+      '<td>$'+rA[8].toFixed(2)+'</td>'+
+      '<td>$'+rB[8].toFixed(2)+'</td>'+
+      '<td class="'+(priceChg>0?'red':'grn')+'">'+(priceChg>=0?'+':'')+priceChg.toFixed(1)+'%</td>'+
+    '</tr>';
+  }).join('');
+
+  document.getElementById('cmpGrid').innerHTML = `
+    <div class="inj-card" style="border-left:4px solid var(--border)">
+      <div class="inj-yr">${yrA} — baseline</div>
+      ${metrics.map(m=>`
+        <div class="hs-row">
+          <span class="hs-metric">${m.label}</span>
+          <span class="hs-val">${m.fmt(m.fn(aA))}</span>
+        </div>`).join('')}
+    </div>
+    <div class="inj-card" style="border-left:4px solid var(--china)">
+      <div class="inj-yr" style="color:var(--china)">${yrB} — comparison${same?' (same year)':''}</div>
+      ${metrics.map(m=>`
+        <div class="hs-row">
+          <span class="hs-metric">${m.label}</span>
+          <span>
+            <span class="hs-val${m.fn(aB)>m.fn(aA)&&m.label.includes('share')?' red':''}">${m.fmt(m.fn(aB))}</span>
+            ${pillHtml(m.fn(aA), m.fn(aB), m.diff)}
+          </span>
+        </div>`).join('')}
+    </div>
+    <div class="inj-card" style="grid-column:1/-1">
+      <div class="inj-yr">Per HS code breakdown — ${yrA} vs ${yrB}</div>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">HS</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrA} Units</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrB} Units</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">Unit Δ</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrA} China%</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrB} China%</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">Share Δ</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrA} Avg$</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${yrB} Avg$</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">Price Δ</th>
+            </tr>
+          </thead>
+          <tbody style="font-family:'DM Mono',monospace">${hsRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded',()=>{
+  updateAll();
+  buildDonuts();
+  buildMonthlyChart();
+  initMap();
+  buildComparison();
+});
+</script>
+</body>
+</html>
